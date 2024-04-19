@@ -9,7 +9,7 @@ from users.permissions import IsOwner
 class HabitCreate(generics.CreateAPIView):
     """ Создание привычки """
     serializer_class = HabitSerializer
-    queryset = Habit.objects.all()
+    # queryset = Habit.objects.all()
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
