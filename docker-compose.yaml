@@ -1,0 +1,58 @@
+version: '3'
+
+services:
+
+  db:
+    image: postgres:16.1-alpine
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_NAME}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    env_file:
+      - .env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_NAME}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./pg_data:/var/lib/postgresql/data/pgdata
+    ports:
+      - '5433:5432'
+
+  redis:
+    image: redis:5.0.3-alpine
+    ports:
+      - '6379:6379'
+
+  app:
+    build: .
+    container_name: hw_docker
+    tty: true
+    command: bash -c 'python manage.py migrate && python manage.py runserver 0.0.0.0:8000'
+    volumes:
+      - .:/code
+    env_file:
+      - .env
+    ports:
+      - '8001:8000'
+    depends_on:
+      db:
+        condition: service_healthy
+
+  celery:
+    build: .
+    tty: true
+    command: celery -A config worker -l INFO
+    depends_on:
+      - redis
+      - app
+
+  celery_beat:
+    build: .
+    tty: true
+    command: celery -A config beat -l INFO -S django
+    depends_on:
+      - redis
+      - app
